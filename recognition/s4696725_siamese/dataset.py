@@ -12,15 +12,14 @@ from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader, Subset
 
 
+"""
+Produces pairs for siamese training.
+- image_dir: folder with images
+- csv_path: metadata csv that contains at least columns: image_name (or image id) and melanoma label (0/1)
+- transform: torchvision transforms applied to images
+- pairs_per_epoch: approximate number of pairs to generate per epoch
+"""
 class SiamesePairDataset(Dataset):
-    """
-    Produces pairs for siamese training.
-    - image_dir: folder with images
-    - csv_path: metadata csv that contains at least columns: image_name (or image id) and melanoma label (0/1)
-    - transform: torchvision transforms applied to images
-    - pairs_per_epoch: approximate number of pairs to generate per epoch
-    """
-
     def __init__(self, image_dir: str, csv_path: str, transform=None, pairs_per_epoch: int = 20000):
         super().__init__()
         self.image_dir = image_dir
@@ -28,8 +27,8 @@ class SiamesePairDataset(Dataset):
         self.metadata['image_name'] += '.jpg'
 
         # Build lists by class
-        self.class0 = self.metadata[self.metadata['target'] == 0]['filename'].tolist()
-        self.class1 = self.metadata[self.metadata['target'] == 1]['filename'].tolist()
+        self.class0 = self.metadata[self.metadata['target'] == 0]['image_name'].tolist()
+        self.class1 = self.metadata[self.metadata['target'] == 1]['image_name'].tolist()
 
         self.transform = transform or transforms.Compose([
             transforms.Resize((224, 224)),
@@ -74,12 +73,10 @@ class SiamesePairDataset(Dataset):
             
         return img1, img2, torch.tensor(label, dtype=torch.float32)
     
-
+"""
+Dataset for running inference on single images in the test set.
+"""
 class SingleImageDataset(Dataset):
-    """
-    Dataset for running inference on single images in the test set.
-    """
-
     def __init__(self, image_dir: str, csv_path: str = None, transform=None):
         super().__init__()
         self.image_dir = image_dir
@@ -107,7 +104,7 @@ class SingleImageDataset(Dataset):
         meta_row = None
 
         if self.meta is not None:
-            row = self.meta[self.meta['filename'] == fn]
+            row = self.meta[self.meta['image_name'] == fn]
 
             if not row.empty:
                 meta_row = row.iloc[0].to_dict()

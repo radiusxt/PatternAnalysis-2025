@@ -7,10 +7,10 @@ import torch.nn as nn
 import torchvision.models as models
 
 
+"""
+Backbone producing a fixed-length embedding from an input image.
+"""
 class EmbeddingNet(nn.Module):
-    """
-    Backbone producing a fixed-length embedding from an input image.
-    """
     def __init__(self, embedding_size: int = 512, pretrained: bool = True):
         super().__init__()
         resnet = models.resnet18(pretrained=pretrained)
@@ -31,13 +31,13 @@ class EmbeddingNet(nn.Module):
         emb = self.fc(feature)
         return emb
     
-
+    
+"""
+Two-tower siamese that returns embeddings for both inputs and a similarity score.
+For training we provide pairs (img1, img2) and label = 1 if same class, else 0.
+The classification head takes |e1 - e2| and predicts same/different.
+"""
 class SiameseNet(nn.Module):
-    """
-    Two-tower siamese that returns embeddings for both inputs and a similarity score.
-    For training we provide pairs (img1, img2) and label = 1 if same class, else 0.
-    The classification head takes |e1 - e2| and predicts same/different.
-    """
     def __init__(self, embedding_size: int = 512, pretrained: bool = True):
         super().__init__()
         self.embedding_net = EmbeddingNet(embedding_size=embedding_size, pretrained=pretrained)
