@@ -8,7 +8,9 @@ import torchvision.models as models
 
 
 class EmbeddingNet(nn.Module):
-    """Backbone producing a fixed-length embedding from an input image."""
+    """
+    Backbone producing a fixed-length embedding from an input image.
+    """
     def __init__(self, embedding_size: int = 512, pretrained: bool = True):
         super().__init__()
         resnet = models.resnet18(pretrained=pretrained)
@@ -24,9 +26,9 @@ class EmbeddingNet(nn.Module):
 
     def forward(self, x):
         # x: (B, C, H, W)
-        feat = self.encoder(x) # (B, 512, 1, 1)
-        feat = feat.view(feat.size(0), -1)
-        emb = self.fc(feat)
+        feature = self.encoder(x) # (B, 512, 1, 1)
+        feature = feature.view(feature.size(0), -1)
+        emb = self.fc(feature)
         return emb
     
 
