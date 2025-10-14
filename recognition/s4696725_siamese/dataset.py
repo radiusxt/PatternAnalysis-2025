@@ -73,6 +73,7 @@ class SiamesePairDataset(Dataset):
             
         return img1, img2, torch.tensor(label, dtype=torch.float32)
     
+
 """
 Dataset for running inference on single images in the test set.
 """
@@ -80,41 +81,33 @@ class SingleImageDataset(Dataset):
     def __init__(self, image_dir: str, csv_path: str = None, transform=None):
         super().__init__()
         self.image_dir = image_dir
-        self.filenames = [f for f in os.listdir(image_dir)]
-        self.filenames.sort()
+        self.filenames = sorted([f for f in os.listdir(image_dir) if f.lower().endswith('.jpg')])
+        self.metadata = pd.read_csv(csv_path)
+        self.metadata['image_name'] += '.jpg'
+        self.metadata.set_index('image_name', inplace=True)
         self.transform = transform or transforms.Compose([
             transforms.Resize((224, 224)),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-        ])
-
-        self.metadata = pd.read_csv(csv_path)
-        self.metadata['image_name'] += '.jpg'
+        ])        
 
     def __len__(self):
         return len(self.filenames)
 
     def __getitem__(self, idx):
-        fn = self.filenames[idx]
-        img = Image.open(os.path.join(self.image_dir, fn)).convert('RGB')
+        filename = self.filenames[idx]
+        img = Image.open(os.path.join(self.image_dir, filename)).convert('RGB')
 
         if self.transform:
             img = self.transform(img)
 
-        meta_row = None
-
-        if self.meta is not None:
-            row = self.meta[self.meta['image_name'] == fn]
-
-            if not row.empty:
-                meta_row = row.iloc[0].to_dict()
-
-        return img, fn, meta_row
+        meta_row = self.metadata.loc[filename].to_dict()
+        return img, filename, meta_row
     
 
-"""
+""" a bunch of rubbish
 Utility function to generate dataLoaders.
-"""
+
 def make_loaders(train_image_dir: str, train_csv: str, batch_size: int = 32, val_split: float = 0.1, pairs_per_epoch: int = 20000, num_workers: int = 4):
     dataset = SiamesePairDataset(train_image_dir, train_csv, pairs_per_epoch=pairs_per_epoch)
     n_val = int(len(dataset) * val_split) if val_split > 0 else 0
@@ -130,3 +123,4 @@ def make_loaders(train_image_dir: str, train_csv: str, batch_size: int = 32, val
     train_loader = DataLoader(Subset(dataset, train_idx), batch_size=batch_size, shuffle=True, num_workers=num_workers)
     val_loader = DataLoader(Subset(dataset, val_idx), batch_size=batch_size, shuffle=False, num_workers=num_workers)
     return train_loader, val_loader
+"""
