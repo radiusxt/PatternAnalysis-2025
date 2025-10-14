@@ -4,24 +4,21 @@ Produces training plots and saves model to ./recognition/s4696725_siamese/model.
 """
 
 import os
-import time
 import json
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import pandas as pd
 import matplotlib.pyplot as plt
-from torch.utils.data import DataLoader
 from tqdm import tqdm
 from modules import SiameseNet
-from dataset import SiamesePairDataset, SingleImageDataset
+from dataset import generate_dataloaders
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 
 
 """
 Training loop on training set.
 """
-def train_loop(model, device, loader, optimizer, criterion, epoch, log_interval=50):
+def train_loop(model, device, loader, optimizer, criterion, epoch):
     model.train()
     running_loss = 0.0
     preds, trues = [], []
@@ -48,7 +45,7 @@ def train_loop(model, device, loader, optimizer, criterion, epoch, log_interval=
     return running_loss / len(loader), acc, f1, prec, rec
 
 """
-Evaluation loop on training set.
+Evaluation loop on validation set.
 """
 def eval_loop(model, device, loader, criterion):
     model.eval()
@@ -68,9 +65,7 @@ def eval_loop(model, device, loader, criterion):
 
     acc = accuracy_score(trues, preds)
     f1 = f1_score(trues, preds, zero_division=0)
-    prec = precision_score(trues, preds, zero_division=0)
-    rec = recall_score(trues, preds, zero_division=0)
-    return running_loss / len(loader), acc, f1, prec, rec
+    return running_loss / len(loader), acc, f1
 
 
 """
@@ -94,77 +89,42 @@ def load_model(path: str, device, embedding_size=512):
 """
 Plots metrics for model.
 """
-def plot_metrics(history, out_dir):
-    os.makedirs(out_dir, exist_ok=True)
-    epochs = list(range(1, len(history['loss']) + 1))
+def plot_metrics(history, save_dir):
+    plt.figure(figsize=(16, 8))
 
-    fig, ax1 = plt.subplots()
-    ax2 = ax1.twinx()
+    plt.plot(history['loss'], label='Train Loss')
+    plt.plot(history['acc'], label='Train Accuracy')
 
-    # Plot train loss on left y-axis
-    color = 'tab:blue'
-    ax1.set_xlabel('Epoch')
-    ax1.set_ylabel('Loss', color=color)
-    ax1.plot(epochs, history['loss'], color=color, label='Train Loss')
-    ax1.tick_params(axis='y', labelcolor=color)
-
-    # Plot train accuracy on right y-axis
-    color = 'tab:orange'
-    ax2.set_ylabel('Accuracy', color=color)
-    ax2.plot(epochs, history['train_acc'], color=color, label='Train Accuracy')
-    ax2.tick_params(axis='y', labelcolor=color)
-
-    fig.suptitle('Training Loss and Accuracy')
-    fig.tight_layout()
-    plt.savefig(os.path.join(out_dir, 'training_results.jpg'))
-    plt.show()
-
-    print(f"F1 Score:   {history['f1'][-1]:.4f}")
-    print(f"Precision:  {history['prec'][-1]:.4f}")
-    print(f"Recall:     {history['rec'][-1]:.4f}")
+    plt.xlabel('Epoch')
+    plt.ylabel('Value')
+    plt.title('Training Loss and Accuracy')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_dir, 'train_metrics.png'))
+    plt.close()
 
 
 """
-Main training loop
+Trains a Siamese network on the ISIC dataset using training and validation splits.
+Saves the best-performing model (based on validation F1) and logs metrics.
 """
 def main():
     train_images = './recognition/s4696725_siamese/train'
     train_csv = './recognition/s4696725_siamese/metadata/train.csv'
     model_dir = './recognition/s4696725_siamese/model'
 
+    epochs = 10
     device = torch.device('cuda' if torch.cuda.is_available() else 'mps' if torch.mps.is_available() else 'cpu')
     print('Using ', device)
-
-    # hyperparameters
-    epochs = 10
-    batch_size = 32
 
     model = SiameseNet(embedding_size=512, pretrained=True).to(device)
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
     criterion = nn.BCEWithLogitsLoss()
-
-    # dataset and dataloaders
-    dataset = SiamesePairDataset(train_images, train_csv, pairs_per_epoch=20000)
-    n_total = len(dataset)
-    n_val = int(0.15 * n_total)
-    n_train = n_total - n_val
-    train_dataset, val_dataset = torch.utils.data.random_split(dataset, [n_train, n_val])
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=2)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=2)
+    train_loader, val_loader = generate_dataloaders(train_images, train_csv)
     
     best_f1 = 0.0
-    history = {
-        'loss': [],
-        'acc': [],
-        'f1': [], 
-        'prec': [],
-        'rec': [],
-        'val_loss': [],
-        'val_acc': [],
-        'val_f1': [],
-        'val_prec': [],
-        'val_rec': []
-    }
+    history = {'loss': [], 'acc': [], 'f1': [], 'prec': [], 'rec': []}
 
     for epoch in range(1, epochs + 1):
         loss, acc, f1, prec, rec = train_loop(model, device, train_loader, optimizer, criterion, epoch)
@@ -176,17 +136,21 @@ def main():
 
         print(f"Epoch {epoch}, Loss = {loss:.4f}, Acc = {acc:.4f}, F1 = {f1:.4f}")
 
-        # validate every 5 epochs
-        if epoch % 5 == 0:
-            val_loss, val_acc, val_f1, val_prec, val_rec = eval_loop(model, device, val_loader, criterion)
-            history.setdefault('val_loss', []).append(val_loss)
-            history.setdefault('val_f1', []).append(val_f1)
+        # validate every 2 epochs and final epoch
+        if epoch % 2 == 0 or epoch == epochs:
+            val_loss, val_acc, val_f1 = eval_loop(model, device, val_loader, criterion)
             print(f"Validation: Loss = {val_loss:.4f}, Acc = {val_acc:.4f}, F1 = {val_f1:.4f}")
 
             # save best model
-            if f1 > best_f1:
-                best_f1 = f1
+            if val_f1 >= best_f1:
+                best_f1 = val_f1
                 save_model(model, model_dir)
+
+    print(f"Loss:       {history['loss'][-1]:.4f}")
+    print(f"Accuracy:   {history['acc'][-1]:.4f}")
+    print(f"F1 Score:   {history['f1'][-1]:.4f}")
+    print(f"Precision:  {history['prec'][-1]:.4f}")
+    print(f"Recall:     {history['rec'][-1]:.4f}")
 
     plot_metrics(history, model_dir)
 

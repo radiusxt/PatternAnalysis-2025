@@ -4,18 +4,18 @@ Data loaders for training and single-image inference.
 """
 
 import os
+import torch
 import random
 import pandas as pd
-import torch
 from PIL import Image
 from torchvision import transforms
-from torch.utils.data import Dataset, DataLoader, Subset
+from torch.utils.data import Dataset, DataLoader
 
 
 """
 Produces pairs for siamese training.
 - image_dir: folder with images
-- csv_path: metadata csv that contains at least columns: image_name (or image id) and melanoma label (0/1)
+- csv_path: metadata csv that contains at least columns: image_name (or image id) and melanoma label (0 or 1)
 - transform: torchvision transforms applied to images
 - pairs_per_epoch: approximate number of pairs to generate per epoch
 """
@@ -105,22 +105,14 @@ class SingleImageDataset(Dataset):
         return img, filename, meta_row
     
 
-""" a bunch of rubbish
-Utility function to generate dataLoaders.
-
-def make_loaders(train_image_dir: str, train_csv: str, batch_size: int = 32, val_split: float = 0.1, pairs_per_epoch: int = 20000, num_workers: int = 4):
-    dataset = SiamesePairDataset(train_image_dir, train_csv, pairs_per_epoch=pairs_per_epoch)
-    n_val = int(len(dataset) * val_split) if val_split > 0 else 0
-
-    if n_val == 0:
-        train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-        return train_loader, None
-    
-    indices = list(range(len(dataset)))
-    random.shuffle(indices)
-    train_idx = indices[n_val:]
-    val_idx = indices[:n_val]
-    train_loader = DataLoader(Subset(dataset, train_idx), batch_size=batch_size, shuffle=True, num_workers=num_workers)
-    val_loader = DataLoader(Subset(dataset, val_idx), batch_size=batch_size, shuffle=False, num_workers=num_workers)
-    return train_loader, val_loader
 """
+Utility function to generate dataloaders.
+"""
+def generate_dataloaders(train_images: str, train_csv: str, split=0.15):
+    dataset = SiamesePairDataset(train_images, train_csv, pairs_per_epoch=20000)
+    n_val = int(len(dataset) * split)
+    n_train = len(dataset) - n_val
+    train_dataset, val_dataset = torch.utils.data.random_split(dataset, [n_train, n_val])
+    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True, num_workers=0)
+    val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False, num_workers=0)
+    return train_loader, val_loader
