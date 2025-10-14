@@ -75,16 +75,6 @@ def save_model(model, path: str):
     os.makedirs(path, exist_ok=True)
     torch.save(model.state_dict(), os.path.join(path, 'siamese.pth'))
 
-"""
-Loads a model from a given path.
-"""
-def load_model(path: str, device, embedding_size=512):
-    model = SiameseNet(embedding_size=embedding_size, pretrained=False)
-    model.load_state_dict(torch.load(path, map_location=device))
-    model.to(device)
-    model.eval()
-    return model
-
 
 """
 Plots metrics for model.

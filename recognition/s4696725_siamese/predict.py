@@ -3,37 +3,29 @@ Example usage of the trained model: load checkpoints, compute prototypes from tr
 run inference on test images, print basic metrics if ground truth available and show some visualizations.
 """
 
-import os
-import random
 import torch
 import pandas as pd
-from matplotlib import pyplot as plt
-from PIL import Image
-from train import load_model, compute_class_prototypes, predict_on_test
+from modules import SiameseNet
+from dataset import SingleImageDataset
+from torch.utils.data import DataLoader
+from sklearn.metrics import accuracy_score
 
 
-def show_samples(test_dir, predictions_csv, n=8, out='sample_predictions.png'):
-    df = pd.read_csv(predictions_csv)
-    sample = df.sample(min(n, len(df)))
-    plt.figure(figsize=(12, 6))
+"""
+Loads a model from a given path.
+"""
+def load_model(path: str, device, embedding_size=512):
+    model = SiameseNet(embedding_size=embedding_size, pretrained=False)
+    model.load_state_dict(torch.load(path, map_location=device))
+    model.to(device)
+    model.eval()
+    return model
 
-    for i, (_, row) in enumerate(sample.iterrows()):
-        fn = row['image_name']
-        p = row['melanoma_prob']
-        img = Image.open(os.path.join(test_dir, fn)).convert('RGB')
-        plt.subplot(2, (n+1)//2, i+1)
-        plt.imshow(img)
-        plt.title(f"{fn}\nP(melanoma)={p:.2f}")
-        plt.axis('off')
-
-    plt.tight_layout()
-    plt.savefig(out)
-    print('Saved sample predictions to', out)
 
 """
 Compute mean embedding per class using a subset of training images.
 Returns dict {0: tensor, 1: tensor}
-
+"""
 def compute_class_prototypes(model, device, image_dir, csv_path, num_per_class: int = 200):
     dataset = SingleImageDataset(image_dir, csv_path)
     loader = DataLoader(dataset, batch_size=32, shuffle=True)
@@ -52,21 +44,21 @@ def compute_class_prototypes(model, device, image_dir, csv_path, num_per_class: 
                 break
 
     for k in [0, 1]:
-        if embeddings[k]:
+        if len(embeddings[k]) > 0:
             proto[k] = torch.stack(embeddings[k])[:num_per_class].mean(dim=0).cpu()
 
         else:
-            proto[k] = torch.zeros(model.embedding_net.fc[0].out_features)
+            proto[k] = torch.zeros_like(next(model.embedding_net.parameters())).mean(dim=0)
 
     return proto
 
 
-
+"""
 Runs Siamese model on the test set using similarity.
-
-def predict_on_test(model, device, test_image_dir, test_csv=None, prototypes=None, batch_size=32):
+"""
+def predict_on_test(model, device, test_image_dir, test_csv=None, prototypes=None):
     ds = SingleImageDataset(test_image_dir, test_csv)
-    loader = DataLoader(ds, batch_size=batch_size, shuffle=False)
+    loader = DataLoader(ds, batch_size=32, shuffle=False)
     filenames, probs = [], []
 
     with torch.no_grad():
@@ -87,39 +79,31 @@ def predict_on_test(model, device, test_image_dir, test_csv=None, prototypes=Non
             probs.extend(probs_batch.cpu().numpy().tolist())
 
     return filenames, probs
-"""
 
-if __name__ == '__main__':
-    model_dir = './recognition/s4696725_siamese/model'
-    model_path = os.path.join(model_dir, 'siamese.pth')
+
+def main():
+    model_path = './recognition/s4696725_siamese/model/siamese.pth'
     train_images = './recognition/s4696725_siamese/train'
     train_csv = './recognition/s4696725_siamese/metadata/train.csv'
     test_images = './recognition/s4696725_siamese/test'
     test_csv = './recognition/s4696725_siamese/metadata/test.csv'
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda' if torch.cuda.is_available() else 'mps' if torch.mps.is_available() else 'cpu')
+    print('Using ', device)
+
     model = load_model(model_path, device)
+
+    print("Computing class prototypes")
     prototypes = compute_class_prototypes(model, device, train_images, train_csv, num_per_class=200)
-    filenames, probs = predict_on_test(model, device, test_images, test_csv, prototypes)
-    out_csv = os.path.join(model_dir, 'test_predictions.csv')
-    pd.DataFrame({'image_name': filenames, 'prob': probs}).to_csv(out_csv, index=False)
-    show_samples(test_images, out_csv)
+
+    print("Running inference on test set")
+    _, probs = predict_on_test(model, device, test_images, test_csv, prototypes=prototypes)
+
+    df = pd.read_csv(test_csv)
+    df['pred'] = [1 if p >= 0.5 else 0 for p in probs]
+    acc = accuracy_score(df['target'], df['pred'])
+    print(f"Test Accuracy: {acc:.4f}")
 
 
-
-    # load of junk
-    """
-    test_images = './recognition/s4696725_siamese/test'
-    test_csv = './recognition/s4696725_siamese/metadata/test.csv'
-    # after training compute prototypes on train set and run on test
-    print('Computing prototypes...')
-    prototypes = compute_class_prototypes(model, device, train_images, train_csv, num_per_class=200)
-    print('Predicting on test set...')
-    filenames, probs = predict_on_test(model, device, test_images, test_csv, prototypes)
-
-    # save predictions
-    os.makedirs(model_dir, exist_ok=True)
-    out_df = {'image_name': filenames, 'prob': probs}
-    
-    pd.DataFrame(out_df).to_csv(os.path.join(model_dir, 'test_predictions.csv'), index=False)
-    """
+if __name__ == '__main__':
+    main()
