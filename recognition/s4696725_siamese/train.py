@@ -4,7 +4,6 @@ Produces training plots and saves model to ./recognition/s4696725_siamese/model.
 """
 
 import os
-import json
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -23,7 +22,7 @@ def train_loop(model, device, loader, optimizer, criterion, epoch):
     running_loss = 0.0
     preds, trues = [], []
 
-    for x1, x2, y in tqdm(loader, desc=f'Epoch {epoch}'):
+    for x1, x2, y in tqdm(loader, desc=f'Epoch {epoch}', leave=False):
         x1, x2, y = x1.to(device), x2.to(device), y.to(device)
         optimizer.zero_grad()
         _, _, logits = model(x1, x2)
@@ -44,6 +43,7 @@ def train_loop(model, device, loader, optimizer, criterion, epoch):
     rec = recall_score(trues, preds, zero_division=0)
     return running_loss / len(loader), acc, f1, prec, rec
 
+
 """
 Evaluation loop on validation set.
 """
@@ -53,7 +53,7 @@ def eval_loop(model, device, loader, criterion):
     preds, trues = [], []
     
     with torch.no_grad():
-        for x1, x2, y in tqdm(loader, desc='Validation'):
+        for x1, x2, y in tqdm(loader, desc='Validation', leave=False):
             x1, x2, y = x1.to(device), x2.to(device), y.to(device)
             _, _, logits = model(x1, x2)
             loss = criterion(logits, y)
@@ -69,29 +69,24 @@ def eval_loop(model, device, loader, criterion):
 
 
 """
-Saves the trained model to <path>/siamese.pth.
+Plots loss and accuracy metrics on a graph.
 """
-def save_model(model, path: str):
-    os.makedirs(path, exist_ok=True)
-    torch.save(model.state_dict(), os.path.join(path, 'siamese.pth'))
+def plot_metrics(history):
+    plt.figure(figsize=(18, 9))
 
+    plt.plot(history['loss'], label='Loss')
+    plt.plot(history['acc'], label='Accuracy')
+    plt.plot(history['f1'], label='F1 Score')
+    plt.plot(history['prec'], label='Precision')
+    plt.plot(history['rec'], label='Recall')
 
-"""
-Plots metrics for model.
-"""
-def plot_metrics(history, save_dir):
-    plt.figure(figsize=(16, 8))
-
-    plt.plot(history['loss'], label='Train Loss')
-    plt.plot(history['acc'], label='Train Accuracy')
-
-    plt.xlabel('Epoch')
-    plt.ylabel('Value')
-    plt.title('Training Loss and Accuracy')
+    plt.title('Training Metrics')
+    plt.xlabel('Epoch #')
+    plt.ylabel('Score')
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(os.path.join(save_dir, 'train_metrics.png'))
+    plt.savefig('./recognition/s4696725_siamese/training_results.png')
     plt.close()
 
 
@@ -104,12 +99,12 @@ def main():
     train_csv = './recognition/s4696725_siamese/metadata/train.csv'
     model_dir = './recognition/s4696725_siamese/model'
 
-    epochs = 10
+    epochs = 12
     device = torch.device('cuda' if torch.cuda.is_available() else 'mps' if torch.mps.is_available() else 'cpu')
-    print('Using ', device)
+    print('Using', device, '\n')
 
-    model = SiameseNet(embedding_size=512, pretrained=True).to(device)
-    optimizer = optim.Adam(model.parameters(), lr=1e-3)
+    model = SiameseNet(embedding_size=512).to(device)
+    optimizer = optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
     criterion = nn.BCEWithLogitsLoss()
     train_loader, val_loader = generate_dataloaders(train_images, train_csv)
     
@@ -123,18 +118,18 @@ def main():
         history['f1'].append(f1)
         history['prec'].append(prec)
         history['rec'].append(rec)
-
-        print(f"Epoch {epoch}, Loss = {loss:.4f}, Acc = {acc:.4f}, F1 = {f1:.4f}")
+        print(f"Epoch {epoch}:      Loss = {loss:.4f}, Acc = {acc:.4f}, F1 = {f1:.4f}")
 
         # validate every 2 epochs and final epoch
         if epoch % 2 == 0 or epoch == epochs:
             val_loss, val_acc, val_f1 = eval_loop(model, device, val_loader, criterion)
             print(f"Validation: Loss = {val_loss:.4f}, Acc = {val_acc:.4f}, F1 = {val_f1:.4f}")
 
-            # save best model
+            # save best model as .pth file
             if val_f1 >= best_f1:
                 best_f1 = val_f1
-                save_model(model, model_dir)
+                os.makedirs(model_dir, exist_ok=True)
+                torch.save(model.state_dict(), os.path.join(model_dir, 'siamese.pth'))
 
     print(f"Loss:       {history['loss'][-1]:.4f}")
     print(f"Accuracy:   {history['acc'][-1]:.4f}")
@@ -142,12 +137,8 @@ def main():
     print(f"Precision:  {history['prec'][-1]:.4f}")
     print(f"Recall:     {history['rec'][-1]:.4f}")
 
-    plot_metrics(history, model_dir)
-
-    with open(os.path.join(model_dir, 'history.json'), 'w') as f:
-        json.dump(history, f, default=float)
-
-    print('Training complete.')
+    plot_metrics(history)
+    print('Training Complete.')
 
 
 if __name__ == '__main__':

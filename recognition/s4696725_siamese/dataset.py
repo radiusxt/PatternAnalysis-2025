@@ -20,7 +20,7 @@ Produces pairs for siamese training.
 - pairs_per_epoch: approximate number of pairs to generate per epoch
 """
 class SiamesePairDataset(Dataset):
-    def __init__(self, image_dir: str, csv_path: str, transform=None, pairs_per_epoch: int = 20000):
+    def __init__(self, image_dir: str, csv_path: str, transform=None, pairs_per_epoch: int = 15000):
         super().__init__()
         self.image_dir = image_dir
         self.metadata = pd.read_csv(csv_path)
@@ -101,15 +101,15 @@ class SingleImageDataset(Dataset):
         if self.transform:
             img = self.transform(img)
 
-        meta_row = self.metadata.loc[filename].to_dict()
-        return img, filename, meta_row
+        label = int(self.metadata.loc[filename]['target'])
+        return img, label
     
 
 """
 Utility function to generate dataloaders.
 """
 def generate_dataloaders(train_images: str, train_csv: str, split=0.15):
-    dataset = SiamesePairDataset(train_images, train_csv, pairs_per_epoch=20000)
+    dataset = SiamesePairDataset(train_images, train_csv, pairs_per_epoch=15000)
     n_val = int(len(dataset) * split)
     n_train = len(dataset) - n_val
     train_dataset, val_dataset = torch.utils.data.random_split(dataset, [n_train, n_val])
