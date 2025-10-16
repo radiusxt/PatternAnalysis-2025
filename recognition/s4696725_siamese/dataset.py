@@ -85,6 +85,7 @@ class SingleImageDataset(Dataset):
         self.metadata = pd.read_csv(csv_path)
         self.metadata['image_name'] += '.jpg'
         self.metadata.set_index('image_name', inplace=True)
+        
         self.transform = transform or transforms.Compose([
             transforms.Resize((224, 224)),
             transforms.ToTensor(),

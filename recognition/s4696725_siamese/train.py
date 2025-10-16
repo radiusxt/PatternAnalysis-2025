@@ -99,7 +99,7 @@ def main():
     train_csv = './recognition/s4696725_siamese/metadata/train.csv'
     model_dir = './recognition/s4696725_siamese/model'
 
-    epochs = 12
+    epochs = 10
     device = torch.device('cuda' if torch.cuda.is_available() else 'mps' if torch.mps.is_available() else 'cpu')
     print('Using', device, '\n')
 

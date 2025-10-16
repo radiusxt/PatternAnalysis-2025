@@ -4,8 +4,8 @@ Siamese model components with backbone, embedding head, and comparator/classifie
 
 import torch
 import torch.nn as nn
-#from torchvision.models import resnet34, ResNet34_Weights
-from torchvision.models import resnet18, ResNet18_Weights
+from torchvision.models import resnet34, ResNet34_Weights
+from torchvision.models import resnet18, ResNet18_Weights   # remove this when predict.py is fully working
 
 
 """
@@ -15,7 +15,7 @@ class EmbeddingNet(nn.Module):
     def __init__(self, embedding_size: int = 512):
         super().__init__()
         #resnet = resnet34(weights=ResNet34_Weights.DEFAULT)
-        resnet = resnet18(weights=ResNet18_Weights.DEFAULT)
+        resnet = resnet18(weights=ResNet18_Weights.DEFAULT)     # remove this when predict.py is fully working
 
         # remove final fc
         modules = list(resnet.children())[:-1] # remove fc
@@ -47,7 +47,7 @@ class SiameseNet(nn.Module):
             nn.Linear(embedding_size, embedding_size // 2),
             nn.ReLU(inplace=True),
             nn.Dropout(0.3),
-            nn.Linear(embedding_size // 2, 1),
+            nn.Linear(embedding_size // 2, 1)
         )
 
     def forward(self, x1, x2):
