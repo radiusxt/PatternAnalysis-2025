@@ -1,5 +1,5 @@
 """
-Prepares dataset in /recognition/s4696725_siamese/train/*.jpg and /recognition/s4696725_siamese/metadata/*.csv.
+Prepares dataset in ./recognition/s4696725_siamese/train/*.jpg and ./recognition/s4696725_siamese/metadata/*.csv.
 Data loaders for training and single-image inference.
 """
 
@@ -9,7 +9,7 @@ import random
 import pandas as pd
 from PIL import Image
 from torchvision import transforms
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, random_split
 
 
 """
@@ -85,7 +85,7 @@ class SingleImageDataset(Dataset):
         self.metadata = pd.read_csv(csv_path)
         self.metadata['image_name'] += '.jpg'
         self.metadata.set_index('image_name', inplace=True)
-        
+
         self.transform = transform or transforms.Compose([
             transforms.Resize((224, 224)),
             transforms.ToTensor(),
@@ -107,13 +107,23 @@ class SingleImageDataset(Dataset):
     
 
 """
-Utility function to generate dataloaders.
+Deterministic utility function to generate dataloaders.
 """
-def generate_dataloaders(train_images: str, train_csv: str, split=0.15):
+def generate_dataloaders(train_images: str, train_csv: str):
+    seed = 137
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.use_deterministic_algorithms(True, warn_only=True)
+    generator = torch.Generator().manual_seed(seed)
+
     dataset = SiamesePairDataset(train_images, train_csv, pairs_per_epoch=15000)
-    n_val = int(len(dataset) * split)
-    n_train = len(dataset) - n_val
-    train_dataset, val_dataset = torch.utils.data.random_split(dataset, [n_train, n_val])
-    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True, num_workers=0)
+
+    train = int(len(dataset) * 0.75)
+    val = int(len(dataset) * 0.15)
+    test = len(dataset) - train - val 
+    train_dataset, val_dataset, test_dataset = random_split(dataset, [train, val, test], generator=generator)
+
+    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True, num_workers=0, generator=generator)
     val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False, num_workers=0)
-    return train_loader, val_loader
+    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=0)
+    return train_loader, val_loader, test_loader

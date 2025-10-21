@@ -18,7 +18,7 @@ class EmbeddingNet(nn.Module):
         resnet = resnet18(weights=ResNet18_Weights.DEFAULT)     # remove this when predict.py is fully working
 
         # remove final fc
-        modules = list(resnet.children())[:-1] # remove fc
+        modules = list(resnet.children())[:-1]
         self.encoder = nn.Sequential(*modules)
         self.fc = nn.Sequential(
             nn.Linear(resnet.fc.in_features, embedding_size),
