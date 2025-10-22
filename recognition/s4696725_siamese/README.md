@@ -28,11 +28,11 @@ The training and testing datasets with the respective metadata can be downloaded
 
 All images were first standardized to a resolution of 224×224 pixels to ensure compatibility with the ResNet backbone and reduce training time. Images were converted to RGB and normalized using ImageNet statistics, reflecting the pretraining distribution of ResNet. To increase model robustness, on-the-fly augmentations were applied during training, including random horizontal flips and slight rotations of up to 10 degrees. This augmentation strategy introduces variability in the data, helping the model generalize better to unseen skin lesion images.
 
-A Siamese network requires input as pairs of images along with a label indicating whether the pair belongs to the same class (benign or malignant). Training pairs were generated dynamically from the dataset metadata where positive pairs were composed of two distinct images from the same class, while negative pairs combined one image from each class. Each epoch generated approximately 15,000 random pairs totaling 30,000 images, maintaining a roughly balanced distribution of positive and negative examples. This approach ensures the model learns to map images to a meaningful embedding space where intra-class distances are small and inter-class distances are large.
+A Siamese network requires input as pairs of images along with a label indicating whether the pair belongs to the same class (benign or malignant). Training pairs were generated dynamically from the dataset metadata where positive pairs were composed of two distinct images from the same class, while negative pairs combined one image from each class. Each epoch generated 15,000 random pairs totaling 30,000 images, maintaining a roughly balanced distribution of positive and negative examples. This approach ensures the model learns to map images to a meaningful embedding space where intra-class distances are small and inter-class distances are large.
 
 ## Validation & Inference
 
-To evaluate generalisation performance during training, a ratio of 75:15:10 of the dataset was used (85% for training, 15% for validating, 10% for testing). The validation dataset was constructed from the same pair-generation process as the training data, but with distinct random sampling. Importantly, no images were shared between training and validation splits, preventing data leakage. Validation pairs were fed in batches of 32 without shuffling to allow consistent performance measurement at the end of each epoch.
+To evaluate generalisation performance during training, a split ratio of 75:15:10 of the dataset was used (85% for training, 15% for validating, 10% for testing). The validation dataset was constructed from the same pair-generation process as the training data, but with distinct random sampling. Importantly, no images were shared between training and validation splits, preventing data leakage. Validation pairs were fed in batches of 32 without shuffling to allow consistent performance measurement at the end of each epoch.
 
 For inference, single images were used rather than pairs, reflecting real-world deployment where the model is tasked to classify an unseen lesion. Images were preprocessed identically to the training data but without random augmentations to ensure deterministic embeddings. For classification, embeddings of test images can be compared to reference embeddings from the training set using the trained Siamese classifier. This setup enables a robust evaluation of the model’s ability to distinguish between benign and malignant lesions based solely on learned similarity in the embedding space.
 
@@ -40,18 +40,18 @@ For inference, single images were used rather than pairs, reflecting real-world 
 
 ### Training
 
-- Loss: 0.35
-- Accuracy: 0.81
-- F1 Score: 0.85
-- Precision: 0.84
-- Recall: 0.85
-- ROC AUC: 0.00
+- Loss: 0.0812
+- Accuracy: 0.9729
+- F1 Score: 0.9731
+- Precision: 0.9680
+- Recall: 0.9782
+- ROC AUC: 0.9942
 
 ![Graph](training_results.png)
 
 ### Testing
 
-- Accuracy: 0.582
+- Accuracy: 0.7293
 
 ![Graph](confusion_matrix.png)
 

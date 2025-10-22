@@ -5,17 +5,15 @@ Siamese model components with backbone, embedding head, and comparator/classifie
 import torch
 import torch.nn as nn
 from torchvision.models import resnet34, ResNet34_Weights
-from torchvision.models import resnet18, ResNet18_Weights   # remove this when predict.py is fully working
 
 
 """
-Backbone producing a fixed-length embedding from an input image.
+Pre-trained ResNet backbone producing a fixed-length embedding from an input image.
 """
 class EmbeddingNet(nn.Module):
     def __init__(self, embedding_size: int = 512):
         super().__init__()
-        #resnet = resnet34(weights=ResNet34_Weights.DEFAULT)
-        resnet = resnet18(weights=ResNet18_Weights.DEFAULT)     # remove this when predict.py is fully working
+        resnet = resnet34(weights=ResNet34_Weights.DEFAULT)
 
         # remove final fc
         modules = list(resnet.children())[:-1]
@@ -23,8 +21,13 @@ class EmbeddingNet(nn.Module):
         self.fc = nn.Sequential(
             nn.Linear(resnet.fc.in_features, embedding_size),
             nn.BatchNorm1d(embedding_size),
-            nn.ReLU(inplace=True)
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.4)
         )
+
+        # unfreeze parameters
+        for param in self.encoder.parameters():
+            param.requires_grad = False
 
     def forward(self, x):
         # x: (B, C, H, W)
@@ -46,7 +49,7 @@ class SiameseNet(nn.Module):
         self.classifier = nn.Sequential(
             nn.Linear(embedding_size, embedding_size // 2),
             nn.ReLU(inplace=True),
-            nn.Dropout(0.3),
+            nn.Dropout(0.4),
             nn.Linear(embedding_size // 2, 1)
         )
 

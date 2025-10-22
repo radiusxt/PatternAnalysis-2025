@@ -19,7 +19,7 @@ Produces pairs for siamese training.
 - transform: torchvision transforms applied to images
 - pairs_per_epoch: approximate number of pairs to generate per epoch
 """
-class SiamesePairDataset(Dataset):
+class SiameseDataset(Dataset):
     def __init__(self, image_dir: str, csv_path: str, transform=None, pairs_per_epoch: int = 15000):
         super().__init__()
         self.image_dir = image_dir
@@ -77,7 +77,7 @@ class SiamesePairDataset(Dataset):
 """
 Dataset for running inference on single images in the test set.
 """
-class SingleImageDataset(Dataset):
+"""class SingleImageDataset(Dataset):
     def __init__(self, image_dir: str, csv_path: str = None, transform=None):
         super().__init__()
         self.image_dir = image_dir
@@ -103,7 +103,7 @@ class SingleImageDataset(Dataset):
             img = self.transform(img)
 
         label = int(self.metadata.loc[filename]['target'])
-        return img, label
+        return img, label"""
     
 
 """
@@ -116,7 +116,7 @@ def generate_dataloaders(train_images: str, train_csv: str):
     torch.use_deterministic_algorithms(True, warn_only=True)
     generator = torch.Generator().manual_seed(seed)
 
-    dataset = SiamesePairDataset(train_images, train_csv, pairs_per_epoch=15000)
+    dataset = SiameseDataset(train_images, train_csv, pairs_per_epoch=15000)
 
     train = int(len(dataset) * 0.75)
     val = int(len(dataset) * 0.15)

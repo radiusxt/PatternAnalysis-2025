@@ -89,6 +89,7 @@ def main():
     print(f"Test Accuracy: {test_acc:.4f}")
 
     # Plot confusion matrix
+    plt.figure(figsize=(10, 10))
     matrix = confusion_matrix(y_true, y_pred)
     disp = ConfusionMatrixDisplay(confusion_matrix=matrix, display_labels=["Benign (0)", "Malignant (1)"])
     disp.plot(cmap="Blues", values_format="d")
