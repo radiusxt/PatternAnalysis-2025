@@ -17,6 +17,13 @@ from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_sc
 
 """
 Training loop on training set.
+
+model: Siamese network.
+device: Hardware device used for training (CUDA/MPS/CPU).
+loader: Dataloader with batches of image pairs and target labels.
+optimiser: Optimiser used to update model parameters.
+criterion: Loss function to measure similarity between embeddings.
+epoch: Current iteration over the entire dataset.
 """
 def train_loop(model, device, loader, optimizer, criterion, epoch):
     model.train()
@@ -49,6 +56,11 @@ def train_loop(model, device, loader, optimizer, criterion, epoch):
 
 """
 Evaluation loop on validation set.
+
+model: Siamese network.
+device: Hardware device used for training (CUDA/MPS/CPU).
+loader: Dataloader with batches of image pairs and target labels.
+criterion: Loss function to measure similarity between embeddings.
 """
 def eval_loop(model, device, loader, criterion):
     model.eval()
@@ -75,6 +87,8 @@ def eval_loop(model, device, loader, criterion):
 
 """
 Plots loss and accuracy metrics on a graph.
+
+history: Dictionary of metrics to plot.
 """
 def plot_metrics(history):
     plt.figure(figsize=(18, 9))
@@ -86,7 +100,7 @@ def plot_metrics(history):
     plt.plot(history['rec'], label='Recall')
     plt.plot(history['auc'], label='ROC AUC')
 
-    plt.title('Training Metrics')
+    plt.title('Training Siamese Network with ResNet Backbone')
     plt.xlabel('Epoch')
     plt.ylabel('Score')
     plt.legend()
@@ -110,8 +124,8 @@ def main():
     print('Using', device, '\n')
 
     model = SiameseNet(embedding_size=512).to(device)
-    optimizer = optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-4)
-    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=2)
+    optimizer = optim.Adam(model.parameters(), lr=1e-4)
+    scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=2)
     criterion = nn.BCEWithLogitsLoss()
     train_loader, val_loader, _ = generate_dataloaders(train_images, train_csv)
     
@@ -140,6 +154,7 @@ def main():
                 best_f1 = val_f1
                 os.makedirs(model_dir, exist_ok=True)
                 torch.save(model.state_dict(), os.path.join(model_dir, 'siamese.pth'))
+                print(f"Saved model at Epoch {epoch}.")
 
     plot_metrics(history)
 

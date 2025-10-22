@@ -8,7 +8,7 @@
 
 A Siamese network is a neural architecture designed to learn a similarity function between pairs of inputs. Instead of directly classifying each image as benign or malignant, it learns a feature embedding space where images of the same class (both benign or both malignant) lie close together, and those of different classes (benign vs malignant) are far apart. This approach is particularly well-suited for medical imaging tasks, such as melanoma detection, where intra-class variability can be high and labeled data may be limited. The Siamese architecture consists of two identical convolutional neural networks (CNNs) sharing weights, each processing one image from a pair. The resulting embeddings are compared through a distance-based function and passed to a classification head that predicts whether the two images belong to the same class.
 
-Each tower of the Siamese network uses a ResNet-34 backbone pretrained on ImageNet to extract high-level features from dermoscopic images. The default fully connected final layer is replaced with a custom fully connected final layer composed of:
+Each tower of the Siamese network uses a ResNet34 backbone pretrained on ImageNet to extract high-level features from dermoscopic images. The default fully connected final layer is replaced with a custom fully connected final layer composed of:
 
 - A linear projection layer mapping ResNet’s output to a lower-dimensional embedding space (512 units),
 - A batch normalization layer for feature stability,
@@ -30,6 +30,8 @@ All images were first standardized to a resolution of 224×224 pixels to ensure 
 
 A Siamese network requires input as pairs of images along with a label indicating whether the pair belongs to the same class (benign or malignant). Training pairs were generated dynamically from the dataset metadata where positive pairs were composed of two distinct images from the same class, while negative pairs combined one image from each class. Each epoch generated 15,000 random pairs totaling 30,000 images, maintaining a roughly balanced distribution of positive and negative examples. This approach ensures the model learns to map images to a meaningful embedding space where intra-class distances are small and inter-class distances are large.
 
+Larger dropout values and regularisation were used to prevent overfitting which is common when tuning pretrained models such as ResNet34.
+
 ## Validation & Inference
 
 To evaluate generalisation performance during training, a split ratio of 75:15:10 of the dataset was used (85% for training, 15% for validating, 10% for testing). The validation dataset was constructed from the same pair-generation process as the training data, but with distinct random sampling. Importantly, no images were shared between training and validation splits, preventing data leakage. Validation pairs were fed in batches of 32 without shuffling to allow consistent performance measurement at the end of each epoch.
@@ -40,18 +42,19 @@ For inference, single images were used rather than pairs, reflecting real-world 
 
 ### Training
 
-- Loss: 0.0812
-- Accuracy: 0.9729
-- F1 Score: 0.9731
-- Precision: 0.9680
-- Recall: 0.9782
-- ROC AUC: 0.9942
+*Metrics from best trained model, not necessarily the final trained model.*
+- Loss: 0.1568
+- Accuracy: 0.8455
+- F1 Score: 0.8074
+- Precision: 0.8164
+- Recall: 0.7977
+- ROC AUC: 0.8853
 
 ![Graph](training_results.png)
 
 ### Testing
 
-- Accuracy: 0.7293
+- Accuracy: 0.8011
 
 ![Graph](confusion_matrix.png)
 
@@ -60,6 +63,10 @@ For inference, single images were used rather than pairs, reflecting real-world 
 All filepaths and commands used in this project are relative to the repository's root directory, ```PatternAnalysis-2025/```. All required dependencies are listed in ```requirements.txt```, generated using ```pip freeze```. To install the dependencies listed in ```requirements.txt```, run the command below,
 
 ```pip install -r ./recognition/s4696725_siamese/requirements.txt```.
+
+## Execute Script
+
+Run ```./recognition/s4696725_siamese/runner.sh```
 
 ## References
 

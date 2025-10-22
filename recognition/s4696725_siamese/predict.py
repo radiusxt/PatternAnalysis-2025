@@ -13,6 +13,11 @@ from sklearn.metrics import accuracy_score, confusion_matrix, ConfusionMatrixDis
 """
 Compute mean embedding per class using a subset of training images.
 Returns dict {0: tensor, 1: tensor}
+
+model: Trained siamese network for extracting feature vectors.
+device: Hardware device used for training (CUDA/MPS/CPU).
+loader: Dataloader with pairs of images.
+num_per_class: Number of samples per class.
 """
 def compute_class_prototypes(model, device, loader, num_per_class):
     embeddings, proto = {0: [], 1: []}, {}
@@ -40,6 +45,11 @@ def compute_class_prototypes(model, device, loader, num_per_class):
 
 """
 Runs Siamese model on the test set using similarity.
+
+model: Trained siamese network for extracting feature vectors.
+device: Hardware device used for training (CUDA/MPS/CPU).
+test_loader: Dataloader with pairs of images.
+prototypes: Dictionary of class mean embeddings.
 """
 def evaluate(model, device, test_loader, prototypes):
     proto0 = prototypes[0].unsqueeze(0).to(device)
@@ -94,6 +104,8 @@ def main():
     disp = ConfusionMatrixDisplay(confusion_matrix=matrix, display_labels=["Benign (0)", "Malignant (1)"])
     disp.plot(cmap="Blues", values_format="d")
     plt.title("Confusion Matrix")
+    plt.xlabel('Predicted')
+    plt.ylabel('Actual')
     plt.tight_layout()
     plt.savefig('./recognition/s4696725_siamese/confusion_matrix.png')
     plt.close()

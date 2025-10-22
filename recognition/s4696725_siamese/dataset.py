@@ -14,10 +14,11 @@ from torch.utils.data import Dataset, DataLoader, random_split
 
 """
 Produces pairs for siamese training.
-- image_dir: folder with images
-- csv_path: metadata csv that contains at least columns: image_name (or image id) and melanoma label (0 or 1)
-- transform: torchvision transforms applied to images
-- pairs_per_epoch: approximate number of pairs to generate per epoch
+
+image_dir: Folder with images.
+csv_path: CSV file for the training metadata.
+transform: Torchvision transforms applied to images.
+pairs_per_epoch: Number of pairs to generate per epoch.
 """
 class SiameseDataset(Dataset):
     def __init__(self, image_dir: str, csv_path: str, transform=None, pairs_per_epoch: int = 15000):
@@ -72,42 +73,13 @@ class SiameseDataset(Dataset):
             img2 = self.transform(img2)
             
         return img1, img2, torch.tensor(label, dtype=torch.float32)
-    
 
-"""
-Dataset for running inference on single images in the test set.
-"""
-"""class SingleImageDataset(Dataset):
-    def __init__(self, image_dir: str, csv_path: str = None, transform=None):
-        super().__init__()
-        self.image_dir = image_dir
-        self.filenames = sorted([f for f in os.listdir(image_dir) if f.lower().endswith('.jpg')])
-        self.metadata = pd.read_csv(csv_path)
-        self.metadata['image_name'] += '.jpg'
-        self.metadata.set_index('image_name', inplace=True)
-
-        self.transform = transform or transforms.Compose([
-            transforms.Resize((224, 224)),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-        ])        
-
-    def __len__(self):
-        return len(self.filenames)
-
-    def __getitem__(self, idx):
-        filename = self.filenames[idx]
-        img = Image.open(os.path.join(self.image_dir, filename)).convert('RGB')
-
-        if self.transform:
-            img = self.transform(img)
-
-        label = int(self.metadata.loc[filename]['target'])
-        return img, label"""
-    
 
 """
 Deterministic utility function to generate dataloaders.
+
+train_images: Folder of images for training.
+train_csv: CSV file with metadata for images.
 """
 def generate_dataloaders(train_images: str, train_csv: str):
     seed = 137
