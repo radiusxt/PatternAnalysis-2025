@@ -42,19 +42,21 @@ For inference, single images were used rather than pairs, reflecting real-world 
 
 ### Training
 
-*Metrics from best trained model, not necessarily the final trained model.*
-- Loss: 0.1568
-- Accuracy: 0.8455
-- F1 Score: 0.8074
-- Precision: 0.8164
-- Recall: 0.7977
-- ROC AUC: 0.8853
+*Metrics from best trained model, not final trained model. Early stopping used due to overfitting.*
+- Loss: 0.1103
+- Accuracy: 0.8967
+- F1 Score: 0.8988
+- Precision: 0.8990
+- Recall: 0.8986
+- ROC AUC: 0.9664
 
 ![Graph](training_results.png)
 
 ### Testing
 
-- Accuracy: 0.8011
+Overall, the model performs well and reaches the 0.8 required threshold but has a notable imbalance in error types. The number of false negatives is significantly higher than false positives which is a critical error. This may lead to missing a malignant case if classified as benign.
+
+- Accuracy: 0.8158
 
 ![Graph](confusion_matrix.png)
 

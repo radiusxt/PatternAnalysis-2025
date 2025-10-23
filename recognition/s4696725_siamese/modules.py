@@ -48,10 +48,10 @@ class SiameseNet(nn.Module):
         super().__init__()
         self.embedding_net = EmbeddingNet(embedding_size=embedding_size)
         self.classifier = nn.Sequential(
-            nn.Linear(embedding_size, 128),
+            nn.Linear(embedding_size, 256),
             nn.ReLU(inplace=True),
             nn.Dropout(0.4),
-            nn.Linear(128, 1)
+            nn.Linear(256, 1)
         )
 
     def forward(self, x1, x2):
